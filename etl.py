@@ -6,12 +6,11 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import udf, col
 from pyspark.sql.functions import year, month, dayofmonth, hour, weekofyear, date_format
 
-
 config = configparser.ConfigParser()
 config.read('dl.cfg')
 
-os.environ['AWS_ACCESS_KEY_ID']=config['AWS']['AWS_ACCESS_KEY_ID']
-os.environ['AWS_SECRET_ACCESS_KEY']=config['AWS']['AWS_SECRET_ACCESS_KEY']
+os.environ['AWS_ACCESS_KEY_ID'] = config['AWS']['AWS_ACCESS_KEY_ID']
+os.environ['AWS_SECRET_ACCESS_KEY'] = config['AWS']['AWS_SECRET_ACCESS_KEY']
 
 
 def create_spark_session():
@@ -25,40 +24,48 @@ def create_spark_session():
 def process_song_data(spark, input_data, output_data):
     # get filepath to song data file
     song_data = f"{input_data}/song_data/*/*/*/*.json"
-    
+
     # read song data file
     df = spark.read.json(song_data)
 
     # extract columns to create songs table
-    # & df.song_id.isNotNull() & df.year.isNotNull())\
     songs_table = df \
-        .filter(df.artist_id.isNotNull())\
-        .select("song_id", "title", "artist_id", "year", "duration")\
+        .filter(df.artist_id.isNotNull()) \
+        .select("song_id", "title", "artist_id", "year", "duration") \
         .distinct()
 
-
-    #get filepath to output song data
+    # set filepath to output song data
     song_path = f"{output_data}/song"
 
     # write songs table to parquet files partitioned by year and artist
     songs_table.write.parquet(song_path, mode='overwrite', partitionBy=('year', 'artist_id'))
-    #
-    # # extract columns to create artists table
-    # artists_table =
-    #
-    # # write artists table to parquet files
-    # artists_table
+
+    # extract columns to create artists table
+    artists_table = df \
+        .filter(df.artist_id.isNotNull()) \
+        .select("artist_id", "artist_name", "artist_location", "artist_latitude", "artist_longitude")\
+        .withColumnRenamed("artist_name","name")\
+        .withColumnRenamed("artist_location","location")\
+        .withColumnRenamed("artist_latitude","latitude")\
+        .withColumnRenamed("artist_longitude","longitude")
+
+    # set filepath to output artist data
+    artist_path = f"{output_data}/artist/"
+
+    # write artists table to parquet files
+    artists_table.write.parquet(artist_path, mode='overwrite', partitionBy="artist_id")
 
 
-# def process_log_data(spark, input_data, output_data):
-#     # get filepath to log data file
-#     log_data =
-#
-#     # read log data file
-#     df =
-#
-#     # filter by actions for song plays
-#     df =
+def process_log_data(spark, input_data, output_data):
+    # get filepath to log data file
+    log_data = f"{input_data}/log-data/*.json"
+
+    # read log data file
+    df = spark.read.json(log_data)
+
+    # filter by actions for song plays
+    df = df.filter("page == 'NextSong'")
+    df.show()
 #
 #     # extract columns for users table
 #     artists_table =
@@ -95,9 +102,9 @@ def main():
     # input_data = "s3a://udacity-dend/"
     input_data = "./data/"
     output_data = "./output_data/"
-    
-    process_song_data(spark, input_data, output_data)    
-    # process_log_data(spark, input_data, output_data)
+
+    process_song_data(spark, input_data, output_data)
+    process_log_data(spark, input_data, output_data)
 
 
 if __name__ == "__main__":
