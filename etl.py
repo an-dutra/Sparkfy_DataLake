@@ -19,13 +19,16 @@ def create_spark_session():
     spark = SparkSession \
         .builder \
         .config("spark.jars.packages", "org.apache.hadoop:hadoop-aws:2.7.0") \
+        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+        .config("spark.hadoop.fs.s3a.awsAccessKeyId", os.environ['AWS_ACCESS_KEY_ID']) \
+        .config("spark.hadoop.fs.s3a.awsSecretAccessKey", os.environ['AWS_SECRET_ACCESS_KEY']) \
         .getOrCreate()
     return spark
 
 
 def process_song_data(spark, input_data, output_data):
     # get filepath to song data file
-    song_data = f"{input_data}/song_data/*/*/*/*.json"
+    song_data = os.path.join(input_data, 'song_data/*/*/*/*.json')
 
     # read song data file
     df = spark.read.json(song_data)
@@ -37,7 +40,7 @@ def process_song_data(spark, input_data, output_data):
         .distinct()
 
     # set filepath to output song data
-    song_path = f"{output_data}/song"
+    song_path = os.path.join(output_data, 'song/')
 
     # write songs table to parquet files partitioned by year and artist
     songs_table.write.parquet(song_path, mode=save_mode, partitionBy=('year', 'artist_id'))
@@ -52,7 +55,7 @@ def process_song_data(spark, input_data, output_data):
         .withColumnRenamed("artist_longitude","longitude")
 
     # set filepath to output artist data
-    artist_path = f"{output_data}/artist/"
+    artist_path = os.path.join(output_data, 'artist/')
 
     # write artists table to parquet files
     artists_table.write.parquet(artist_path, mode=save_mode)
@@ -60,7 +63,7 @@ def process_song_data(spark, input_data, output_data):
 
 def process_log_data(spark, input_data, output_data):
     # get filepath to log data file
-    log_data = f"{input_data}/log-data/*.json"
+    log_data = os.path.join(input_data, 'log-data/*.json')
 
     # read log data file
     log_dataframe = spark.read.json(log_data)
@@ -79,7 +82,7 @@ def process_log_data(spark, input_data, output_data):
         .withColumnRenamed("lastName", "last_name")
 
     # set user table path
-    users_table_path = f"{output_data}/user/"
+    users_table_path = os.path.join(output_data, '/user/')
 
     # write users table to parquet files
     users_table.write.parquet(users_table_path, mode=save_mode, partitionBy='user_id')
@@ -105,11 +108,11 @@ def process_log_data(spark, input_data, output_data):
     time_table = time_dataframe.select("start_time", "hour", "day", "week", "month", "year", "weekday")
 
     # write time table to parquet files partitioned by year and month
-    time_table_path = f"{output_data}/time"
+    time_table_path = os.path.join(output_data, '/time/')
     time_table.write.parquet(time_table_path, mode=save_mode, partitionBy=('start_time'))
 
     # read in song data to use for songplays table
-    song_path = f"{output_data}/song"
+    song_path = os.path.join(output_data, '/song/')
     song_df = spark.read.parquet(song_path)
 
     # extract columns from joined song and log datasets to create songplays table
@@ -126,7 +129,7 @@ def process_log_data(spark, input_data, output_data):
 
 
     # write songplays table to parquet files partitioned by year and month
-    songplays_path = f"{output_data}/songplay"
+    songplays_path = os.path.join(output_data, '/songplay/')
     songplays_table.write.parquet(songplays_path, mode=save_mode)
 
 
